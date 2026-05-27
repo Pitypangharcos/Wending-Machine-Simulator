@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wending Machine Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div id="startScreen" class="start-screen">
+      <section class="start-panel">
+        <p class="eyebrow">Wending Machine Simulator</p>
+        <h1>Choose your first vending machine</h1>
+        <p class="start-copy">Your first machine is free, but restocking, upkeep, security, and suspiciously snack-focused customers are all on you.</p>
+        <div id="starterChoices" class="starter-choices"></div>
+      </section>
+    </div>
+
+    <main class="game-shell">
+      <section class="topbar" aria-label="Game status">
+        <div>
+          <p class="eyebrow">Wending Machine Simulator</p>
+          <h1>Vending route manager <button class="help-button" data-help="overview" aria-label="Game overview help">?</button></h1>
+        </div>
+        <div class="stat-grid">
+          <div class="stat">
+            <span>Cash</span>
+            <button class="help-button small" data-help="cash" aria-label="Cash help">?</button>
+            <strong id="cash">0 Ft</strong>
+          </div>
+          <div class="stat">
+            <span>Warehouse</span>
+            <button class="help-button small" data-help="warehouse" aria-label="Warehouse help">?</button>
+            <strong id="warehouseCount">0 pcs</strong>
+          </div>
+          <div class="stat">
+            <span>Day</span>
+            <button class="help-button small" data-help="day" aria-label="Day help">?</button>
+            <strong id="day">1</strong>
+          </div>
+          <div class="stat">
+            <span>Reputation</span>
+            <button class="help-button small" data-help="reputation" aria-label="Reputation help">?</button>
+            <strong id="reputation">0%</strong>
+          </div>
+          <div class="stat">
+            <span>Last profit</span>
+            <button class="help-button small" data-help="profit" aria-label="Profit help">?</button>
+            <strong id="dailyProfit">0 Ft</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="save-panel" aria-label="Save slots">
+        <div class="save-title">
+          <span>Save slots <button class="help-button small" data-help="saves" aria-label="Save slot help">?</button></span>
+          <small>Stored locally in this browser</small>
+        </div>
+        <div id="saveSlots" class="save-slots"></div>
+      </section>
+
+      <section id="weeklyGoal" class="goal-panel" aria-label="Weekly goal"></section>
+
+      <section class="layout">
+        <aside class="panel machine-list" aria-label="Vending machines">
+          <div class="panel-heading">
+            <h2>Machines <button class="help-button small" data-help="machines" aria-label="Machines help">?</button></h2>
+          </div>
+          <div class="buy-box">
+            <select id="machineToBuy" aria-label="Machine to buy"></select>
+            <button id="buyMachine" title="Buy machine" aria-label="Buy machine">+</button>
+          </div>
+          <div id="machines" class="machines"></div>
+        </aside>
+
+        <section class="stage" aria-label="Selected vending machine">
+          <div class="machine-visual" id="machineVisual">
+            <div id="customerLane" class="customer-lane" aria-hidden="true"></div>
+            <div id="actionBadge" class="action-badge" aria-live="polite"></div>
+            <div id="machineArt" class="machine-art snack">
+              <div class="sign" id="machineSign">SnackBox 120</div>
+              <div class="glass" id="productWindows"></div>
+              <div class="controls">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="slot"></div>
+            </div>
+          </div>
+
+          <div class="panel detail-panel">
+            <div class="detail-title">
+              <div>
+                <p class="eyebrow" id="machineType">Snack machine</p>
+                <h2 id="machineName">SnackBox 120</h2>
+              </div>
+              <div class="machine-money">
+                <span>Inside</span>
+                <strong id="machineCash">0 Ft</strong>
+              </div>
+            </div>
+
+            <div class="location-row">
+              <label for="machineLocation">Location</label>
+              <button class="help-button small" data-help="locations" aria-label="Location help">?</button>
+              <select id="machineLocation"></select>
+            </div>
+            <div id="locationProfile" class="location-profile" aria-label="Location profile"></div>
+
+            <div class="meter-row">
+              <label>
+                Condition
+                <button class="help-button small" data-help="condition" aria-label="Condition help">?</button>
+                <span class="meter"><span id="conditionBar"></span></span>
+              </label>
+              <label>
+                Cleanliness
+                <button class="help-button small" data-help="cleanliness" aria-label="Cleanliness help">?</button>
+                <span class="meter"><span id="cleanBar"></span></span>
+              </label>
+              <label>
+                Security
+                <button class="help-button small" data-help="security" aria-label="Security help">?</button>
+                <span class="meter"><span id="securityBar"></span></span>
+              </label>
+            </div>
+
+            <div class="actions">
+              <button id="nextDay">Next day</button>
+              <button id="collectCash">Collect cash</button>
+              <button id="repair">Service</button>
+              <button id="clean">Clean</button>
+            </div>
+
+            <div class="upgrade-box">
+              <div class="mini-heading">
+                <span>Machine upgrades</span>
+                <button class="help-button small" data-help="upgrades" aria-label="Upgrades help">?</button>
+                <small id="upgradeHint">Pick a machine to tune it.</small>
+              </div>
+              <div id="upgrades" class="upgrade-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel side-panel" aria-label="Products and reports">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="products" role="tab">Products</button>
+            <button class="tab" data-tab="stock" role="tab">Stock</button>
+            <button class="tab" data-tab="stats" role="tab">Stats</button>
+            <button class="tab" data-tab="log" role="tab">Log</button>
+          </div>
+
+          <div id="productsTab" class="tab-page active">
+            <div id="products" class="products"></div>
+          </div>
+
+          <div id="stockTab" class="tab-page">
+            <div class="auto-box">
+              <div class="mini-heading">
+                <span>Auto-restock policy</span>
+                <button class="help-button small" data-help="autostock" aria-label="Auto restock help">?</button>
+                <small>Set a warehouse minimum. It buys up to that number before each day if cash is available.</small>
+              </div>
+              <div id="autoRestock" class="auto-restock"></div>
+            </div>
+            <div class="mini-heading warehouse-heading">
+              <span>Warehouse</span>
+              <button class="help-button small" data-help="stocktab" aria-label="Warehouse stock help">?</button>
+              <small>Fresh items show remaining shelf life.</small>
+            </div>
+            <div id="warehouse" class="warehouse"></div>
+          </div>
+
+          <div id="statsTab" class="tab-page">
+            <div class="chart-switches">
+              <button class="help-button stats-help" data-help="stats" aria-label="Stats help">?</button>
+              <label><input type="checkbox" data-chart="restock" checked> Restock</label>
+              <label><input type="checkbox" data-chart="service" checked> Service</label>
+              <label><input type="checkbox" data-chart="cleaning" checked> Cleaning</label>
+              <label><input type="checkbox" data-chart="revenue" checked> Revenue</label>
+            </div>
+            <div id="stats" class="stats-page"></div>
+          </div>
+
+          <div id="logTab" class="tab-page">
+            <ol id="log" class="log"></ol>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <div id="helpOverlay" class="help-overlay" aria-hidden="true">
+      <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <button id="helpClose" class="help-close" aria-label="Close help">x</button>
+        <h2 id="helpTitle">Help</h2>
+        <p id="helpText"></p>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
