@@ -11,22 +11,44 @@
       <section class="start-panel">
         <p class="eyebrow">Wending Machine Simulator</p>
         <h1>Choose your first vending machine</h1>
-        <p class="start-copy">Your first machine is free, but restocking, upkeep, security, and suspiciously snack-focused customers are all on you.</p>
+        <p class="start-copy">Choose financing, then buy your first machine from starting capital. Debt, upkeep, security, and suspiciously snack-focused customers are all on you.</p>
+        <label class="start-name">
+          Company name
+          <input id="companyNameInput" type="text" maxlength="42" placeholder="Unregistered Snack Concern">
+        </label>
+        <div class="start-financing">
+          <div class="mini-heading">
+            <span>Startup financing</span>
+            <small>Choose the debt pressure before buying your first machine.</small>
+          </div>
+          <div id="startupFinancing" class="financing-choices"></div>
+        </div>
+        <div class="start-load">
+          <div class="mini-heading">
+            <span>Existing route</span>
+            <small>Load or import before starting a new company. New routes do not overwrite saves unless you save later.</small>
+          </div>
+          <div id="startLoadSlots" class="save-slots start-save-slots"></div>
+          <div class="save-tools start-save-tools">
+            <button id="startImportSave">Import JSON</button>
+            <input id="startImportSaveFile" type="file" accept="application/json,.json" hidden>
+          </div>
+        </div>
         <div id="starterChoices" class="starter-choices"></div>
       </section>
     </div>
 
     <main class="game-shell">
-      <section class="topbar" aria-label="Game status">
+      <section class="topbar" aria-label="Route status">
         <div>
           <p class="eyebrow">Wending Machine Simulator</p>
-          <h1>Vending route manager <button class="help-button" data-help="overview" aria-label="Game overview help">?</button></h1>
+          <h1><span id="companyName">Vending route manager</span> <button class="help-button" data-help="overview" aria-label="Route overview help">?</button></h1>
         </div>
         <div class="stat-grid">
           <div class="stat">
             <span>Cash</span>
             <button class="help-button small" data-help="cash" aria-label="Cash help">?</button>
-            <strong id="cash">0 Ft</strong>
+            <strong id="cash">0 Cr</strong>
           </div>
           <div class="stat">
             <span>Warehouse</span>
@@ -46,7 +68,7 @@
           <div class="stat">
             <span>Last profit</span>
             <button class="help-button small" data-help="profit" aria-label="Profit help">?</button>
-            <strong id="dailyProfit">0 Ft</strong>
+            <strong id="dailyProfit">0 Cr</strong>
           </div>
         </div>
       </section>
@@ -57,9 +79,17 @@
           <small>Stored locally in this browser</small>
         </div>
         <div id="saveSlots" class="save-slots"></div>
+        <div class="save-tools">
+          <button id="exportSave">Export JSON</button>
+          <button id="importSave">Import JSON</button>
+          <input id="importSaveFile" type="file" accept="application/json,.json" hidden>
+        </div>
       </section>
 
       <section id="weeklyGoal" class="goal-panel" aria-label="Weekly goal"></section>
+      <section id="financePanel" class="finance-panel" aria-label="Debt and licensing"></section>
+      <section id="firstWeekGuidance" class="guidance-panel" aria-label="First week guidance"></section>
+      <section id="reviewsPanel" class="reviews-panel" aria-label="Customer reviews"></section>
 
       <section class="layout">
         <aside class="panel machine-list" aria-label="Vending machines">
@@ -70,6 +100,7 @@
             <select id="machineToBuy" aria-label="Machine to buy"></select>
             <button id="buyMachine" title="Buy machine" aria-label="Buy machine">+</button>
           </div>
+          <div id="contractPanel" class="contract-panel"></div>
           <div id="machines" class="machines"></div>
         </aside>
 
@@ -97,9 +128,13 @@
               </div>
               <div class="machine-money">
                 <span>Inside</span>
-                <strong id="machineCash">0 Ft</strong>
+                <strong id="machineCash">0 Cr</strong>
               </div>
             </div>
+            <label class="rename-row">
+              Machine name
+              <input id="machineRename" type="text" maxlength="42">
+            </label>
 
             <div class="location-row">
               <label for="machineLocation">Location</label>
@@ -126,12 +161,18 @@
               </label>
             </div>
 
+            <div class="mini-heading action-heading">
+              <span>Daily actions</span>
+              <button class="help-button small" data-help="actions" aria-label="Daily actions help">?</button>
+            </div>
             <div class="actions">
               <button id="nextDay">Next day</button>
               <button id="collectCash">Collect cash</button>
               <button id="repair">Service</button>
               <button id="clean">Clean</button>
             </div>
+            <div id="advisorPanel" class="advisor-panel" aria-label="Route advisor"></div>
+            <div id="expensePreview" class="expense-preview" aria-label="Projected next day expenses"></div>
 
             <div class="upgrade-box">
               <div class="mini-heading">
@@ -148,11 +189,18 @@
           <div class="tabs" role="tablist">
             <button class="tab active" data-tab="products" role="tab">Products</button>
             <button class="tab" data-tab="stock" role="tab">Stock</button>
-            <button class="tab" data-tab="stats" role="tab">Stats</button>
-            <button class="tab" data-tab="log" role="tab">Log</button>
+            <button class="tab" data-tab="corporate" role="tab">Corporate</button>
+            <button class="tab" data-tab="stats" role="tab">Progress</button>
+            <button class="tab" data-tab="log" role="tab">City</button>
           </div>
 
           <div id="productsTab" class="tab-page active">
+            <div class="mini-heading">
+              <span>Pricing and machine stock</span>
+              <button class="help-button small" data-help="products" aria-label="Products and pricing help">?</button>
+              <button class="help-button small" data-help="manualRestock" aria-label="Manual restocking help">?</button>
+              <small>Set prices here, then choose exact restock quantities from warehouse.</small>
+            </div>
             <div id="products" class="products"></div>
           </div>
 
@@ -173,9 +221,18 @@
             <div id="warehouse" class="warehouse"></div>
           </div>
 
+          <div id="corporateTab" class="tab-page">
+            <div class="mini-heading warehouse-heading">
+              <span>Corporate & warfare</span>
+              <button class="help-button small" data-help="corporate" aria-label="Corporate systems help">?</button>
+              <small>Employees, suppliers, legal heat, hostility, and leverage with consequences.</small>
+            </div>
+            <div id="corporate" class="corporate-panel"></div>
+          </div>
+
           <div id="statsTab" class="tab-page">
             <div class="chart-switches">
-              <button class="help-button stats-help" data-help="stats" aria-label="Stats help">?</button>
+              <button class="help-button stats-help" data-help="stats" aria-label="Progress help">?</button>
               <label><input type="checkbox" data-chart="restock" checked> Restock</label>
               <label><input type="checkbox" data-chart="service" checked> Service</label>
               <label><input type="checkbox" data-chart="cleaning" checked> Cleaning</label>
@@ -185,6 +242,23 @@
           </div>
 
           <div id="logTab" class="tab-page">
+            <div class="mini-heading">
+              <span>City feed</span>
+              <button class="help-button small" data-help="cityFeed" aria-label="City feed help">?</button>
+              <small>Definitely reputable commercial news.</small>
+            </div>
+            <div id="cityFeed" class="city-feed"></div>
+            <div class="mini-heading">
+              <span>City impact</span>
+              <button class="help-button small" data-help="cityImpact" aria-label="City impact help">?</button>
+              <small>Active city modifiers affecting prices, demand, security, theft, and audits.</small>
+            </div>
+            <div id="cityImpact" class="impact-list"></div>
+            <div class="mini-heading">
+              <span>Operations log</span>
+              <button class="help-button small" data-help="log" aria-label="Log help">?</button>
+              <small>Recent events, warnings, and weird business evidence.</small>
+            </div>
             <ol id="log" class="log"></ol>
           </div>
         </aside>
@@ -196,6 +270,19 @@
         <button id="helpClose" class="help-close" aria-label="Close help">x</button>
         <h2 id="helpTitle">Help</h2>
         <p id="helpText"></p>
+      </div>
+    </div>
+
+    <div id="gameOverOverlay" class="game-over-overlay" aria-hidden="true">
+      <div class="game-over-card" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+        <p class="eyebrow">Route terminated</p>
+        <h2 id="gameOverTitle">Route terminated</h2>
+        <p id="gameOverReason">The vending concern has reached a legally inconvenient conclusion.</p>
+        <div class="game-over-actions">
+          <button id="gameOverNew">Start new route</button>
+          <button id="gameOverLoad">Load save</button>
+          <button id="gameOverExport">Export final save</button>
+        </div>
       </div>
     </div>
 
