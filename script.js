@@ -212,6 +212,39 @@ const locations = {
   mall: { label: "Shopping mall", demand: 1.26, upkeep: 390, theft: 1.05, security: 64, clean: 1.16, eventBias: "crowd" }
 };
 
+const districtProfiles = {
+  campus: {
+    identity: "Student district",
+    strategy: "cheap snacks, water, and stress purchases",
+    risk: "trend-sensitive demand and messy crowds",
+    cityLine: "Campus vending culture remains one group project away from snack dependency."
+  },
+  office: {
+    identity: "Corporate district",
+    strategy: "coffee, lunch, and tidy machines",
+    risk: "higher rent, lower chaos, more paperwork energy",
+    cityLine: "Office towers continue converting fatigue into authorized caffeine."
+  },
+  station: {
+    identity: "Commuter district",
+    strategy: "fast drinks, cheap snacks, and chaos tolerance",
+    risk: "low security, theft, and sudden traffic swings",
+    cityLine: "Station foot traffic rises whenever the timetable loses confidence."
+  },
+  gym: {
+    identity: "Fitness district",
+    strategy: "water, nuts, salads, and disciplined pricing",
+    risk: "weak junk-food fit and judgemental mirrors",
+    cityLine: "Fitness district customers continue buying hydration with moral posture."
+  },
+  mall: {
+    identity: "Impulse district",
+    strategy: "snacks, cola, lattes, and nightlife-adjacent cans",
+    risk: "crowds, trends, and private-security mood swings",
+    cityLine: "Mall customers remain vulnerable to anything cold, shiny, or near an escalator."
+  }
+};
+
 const locationProductSynergy = {
   campus: { bar: 1.18, chips: 1.12, water: 1.08, espresso: 0.92, salad: 0.86, beer: 1.04, wine: 0.82, seltzer: 1.08 },
   office: { espresso: 1.28, latte: 1.2, sandwich: 1.14, energy: 1.08, chips: 0.88, cola: 0.92, beer: 0.78, wine: 1.04, seltzer: 0.92 },
@@ -497,7 +530,7 @@ const rareEncounters = [
     }
   },
   {
-    chance: 0.0025,
+    chance: 0.005,
     text: (machine) => `${machine.name}: somebody scratched NEX// into the side panel, then covered half of it with a price label.`,
     effect(machine) {
       addMachineIncident(machine, "NEX// side-panel graffiti logged.");
@@ -505,12 +538,28 @@ const rareEncounters = [
     }
   },
   {
-    chance: 0.0028,
+    chance: 0.0055,
     text: (machine) => `${machine.name}: anti-corporate graffiti appeared overnight. It somehow improved the machine's trust metrics.`,
     effect(machine) {
       addMachineIncident(machine, "Anti-corporate graffiti logged as accidental brand alignment.");
       state.brandBuzz = clamp(state.brandBuzz + 0.8, 0, 100);
       state.world.hostility = clamp((state.world.hostility || 0) + 0.8, 0, 100);
+    }
+  },
+  {
+    chance: 0.0048,
+    text: (machine) => `${machine.name}: maintenance found a sticker reading 'ROUTE REMEMBERS'. It was under a screw nobody removed.`,
+    effect(machine) {
+      addMachineIncident(machine, "Sticker under screw: ROUTE REMEMBERS.");
+      state.brandBuzz = clamp(state.brandBuzz + 0.5, 0, 100);
+    }
+  },
+  {
+    chance: 0.0044,
+    text: (machine) => `${machine.name}: a customer left three coins in a triangle and refused change.`,
+    effect(machine) {
+      machine.cash += 90;
+      addMachineIncident(machine, "Triangular coin offering accepted by accounting.");
     }
   }
 ];
@@ -1260,6 +1309,30 @@ const diplomacyPrompts = [
       { label: "Demand cleaner terms", consequence: "Lower gain, lower risk.", apply(corp) { state.cash += 6000; state.brandBuzz = clamp(state.brandBuzz + 1, 0, 100); corp.rep = clamp((corp.rep || 0) - 1, 0, 100); addOperatorChoiceSignal("legalistic", 1); return `Cleaner terms filed. ${corp.label} looked briefly inconvenienced by legitimacy.`; } },
       { label: "Leak the offer", consequence: "Damage rival, raise hostility.", apply(corp) { corp.rep = clamp((corp.rep || 0) - 5, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) + 8, 0, 100); state.corporate.heat = clamp((state.corporate.heat || 0) + 3, 0, 100); addOperatorChoiceSignal("dirtyTactics", 1.4); return `${corp.label}'s offer leaked. The city enjoyed the scandal and learned nothing.`; } }
     ]
+  },
+  {
+    id: "supplierTruce",
+    minStage: "early",
+    cooldown: 11,
+    title: (corp) => `${corp.label} proposes a supplier quiet period`,
+    text: (corp) => `${corp.label} suggests both sides stop squeezing suppliers for one week. The supplier lobby pretends not to cry.`,
+    choices: [
+      { label: "Agree to quiet procurement", consequence: "Lower hostility, lower audit heat.", apply(corp) { corp.hostility = clamp((corp.hostility || 0) - 8, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) - 4, 0, 100); state.corporate.heat = clamp((state.corporate.heat || 0) - 1.8, 0, 100); addOperatorChoiceSignal("diplomatic", 1); return `Supplier quiet period accepted. Everyone agrees not to call it mercy.`; } },
+      { label: "Exploit the pause", consequence: "Cheaper stock signal, dirty tactics.", apply(corp) { corp.rep = clamp((corp.rep || 0) - 2, 0, 100); state.corporate.heat = clamp((state.corporate.heat || 0) + 3.5, 0, 100); addOperatorChoiceSignal("dirtyTactics", 1.2); return `You exploited the procurement pause. Suppliers learned a new kind of silence.`; } },
+      { label: "Refuse supplier diplomacy", consequence: "Hostility rises.", apply(corp) { corp.hostility = clamp((corp.hostility || 0) + 6, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) + 4, 0, 100); addOperatorChoiceSignal("aggressiveExpansion", 0.8); return `${corp.label} marked your refusal as aggressive procurement posture.`; } }
+    ]
+  },
+  {
+    id: "districtSwap",
+    minStage: "deep",
+    cooldown: 13,
+    title: (corp) => `${corp.label} offers a district swap`,
+    text: (corp) => `${corp.label} wants informal district boundaries. Nothing is signed, which makes it feel more illegal than it is.`,
+    choices: [
+      { label: "Accept informal boundaries", consequence: "Lower pressure, lower monopoly signal.", apply(corp) { state.world.hostility = clamp((state.world.hostility || 0) - 8, 0, 100); corp.hostility = clamp((corp.hostility || 0) - 10, 0, 100); addOperatorChoiceSignal("diplomatic", 1.3); return `Informal district boundaries accepted. The city enjoys invisible fences.`; } },
+      { label: "Demand exit from hot districts", consequence: "Rival weakens, hostility rises.", apply(corp) { corp.rep = clamp((corp.rep || 0) - 4, 0, 100); corp.marketShare = clamp((corp.marketShare || 0) - 2, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) + 7, 0, 100); addOperatorChoiceSignal("aggressiveExpansion", 1.4); return `${corp.label} rejected your demand, then quietly recalculated rent exposure.`; } },
+      { label: "Publish the map", consequence: "Public trust up, corporate heat up.", apply(corp) { state.brandBuzz = clamp(state.brandBuzz + 3, 0, 100); state.corporate.heat = clamp((state.corporate.heat || 0) + 2, 0, 100); addOperatorChoiceSignal("antiCorporate", 1.2); return `The district map leaked. Customers enjoyed understanding the cage.`; } }
+    ]
   }
 ];
 
@@ -1334,6 +1407,27 @@ const pressInterviewPrompts = [
       { label: "Growth follows service quality.", consequence: "Reputation up, hostility down slightly.", apply() { state.brandBuzz = clamp(state.brandBuzz + 2, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) - 2, 0, 100); state.world.pressTone = "civic"; addOperatorChoiceSignal("ethical", 1); return "Service-quality answer published. It sounded less threatening than the machine map looked."; } },
       { label: "Expansion prevents worse operators.", consequence: "Hostility up, WENDING notices.", apply() { state.brandBuzz = clamp(state.brandBuzz + 1.8, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) + 6, 0, 100); state.world.pressTone = "market"; addOperatorChoiceSignal("aggressiveExpansion", 1.4); return "The answer made competitors furious because parts of it were useful."; } },
       { label: "Ask the corporations.", consequence: "Anti-corporate signal, audit attention.", apply() { state.brandBuzz = clamp(state.brandBuzz + 3.4, 0, 100); state.corporate.heat = clamp((state.corporate.heat || 0) + 2.5, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) + 5, 0, 100); state.world.pressTone = "antiCorporate"; addOperatorChoiceSignal("antiCorporate", 1.5); return "The panel moved on quickly. Corporate representatives did not."; } }
+    ]
+  },
+  {
+    id: "debtCulture",
+    title: "Finance column asks about debt-led growth",
+    text: "Your route has taken on notable debt. Is this expansion, survival, or a cry for invoices?",
+    requires: () => loanPrincipal() >= 45000,
+    choices: [
+      { label: "Debt funds infrastructure.", consequence: "Corporate signal, hostility steady.", apply() { state.world.pressTone = "corporate"; state.brandBuzz = clamp(state.brandBuzz + 1.3, 0, 100); addOperatorChoiceSignal("corporateCompliance", 1); addOperatorChoiceSignal("debtGrowth", 0.8); return "Debt-as-infrastructure quote published. Banks placed it in a small frame."; } },
+      { label: "We repay what we owe.", consequence: "Cautious WENDING signal.", apply() { state.world.pressTone = "civic"; state.brandBuzz = clamp(state.brandBuzz + 1.8, 0, 100); addOperatorChoiceSignal("cautious", 1.2); return "Repayment discipline quoted. Finance briefly stopped breathing through its teeth."; } },
+      { label: "Money is rented time.", consequence: "Anti-corporate signal, audit curiosity.", apply() { state.world.pressTone = "antiCorporate"; state.corporate.heat = clamp((state.corporate.heat || 0) + 1.8, 0, 100); addOperatorChoiceSignal("antiCorporate", 1.1); return "The quote confused lenders and delighted three tired operators."; } }
+    ]
+  },
+  {
+    id: "customerMixQuestion",
+    title: "District reporter asks about customer targeting",
+    text: "Locals noticed machines that seem unusually tuned to their habits. How intentional is the route?",
+    choices: [
+      { label: "We listen to district needs.", consequence: "Reputation up, ethical signal.", apply() { state.brandBuzz = clamp(state.brandBuzz + 2.4, 0, 100); state.world.pressTone = "civic"; addOperatorChoiceSignal("ethical", 1); return "District-needs answer filed. Customers accepted the comforting version."; } },
+      { label: "Patterns are profitable.", consequence: "Demand posture, hostility up.", apply() { state.brandBuzz = clamp(state.brandBuzz + 1.2, 0, 100); state.world.hostility = clamp((state.world.hostility || 0) + 4, 0, 100); state.world.pressTone = "market"; addOperatorChoiceSignal("aggressiveExpansion", 1.1); return "Pattern-profit quote circulated. The city heard the quiet part clearly."; } },
+      { label: "The machines decide.", consequence: "Folklore tone, WENDING anomaly.", apply() { state.brandBuzz = clamp(state.brandBuzz + 2.8, 0, 100); addOperatorChoiceSignal("antiCorporate", 0.8); state.world.pressTone = "uncanny"; return "The machines-decide quote became folklore before lunch."; } }
     ]
   }
 ];
@@ -1463,6 +1557,48 @@ const chaosEvents = [
       const company = pick(activeCorporations().length ? activeCorporations() : state.competition.companies);
       company.rep = clamp(company.rep + 1.8, 0, 100);
       events.push(`${company.label} gained a small reputation bump from terminology exposure.`);
+    }
+  },
+  {
+    chance: 0.013,
+    text: "Transit strike: commuters are trapped near machines and suddenly describe snacks as infrastructure.",
+    effect(events) {
+      applyDemandEvent({ name: "Transit strike", productIds: ["water", "cola", "chips", "sandwich"], multiplier: 1.28, duration: 2, text: "Transit strike: station-adjacent demand rises for fast food and drinks." }, events);
+      const pressure = competitionLocation("station");
+      pressure.level = clamp((pressure.level || 0) + 1, 0, 6);
+      pressure.daysLeft = Math.max(pressure.daysLeft || 0, 3);
+      events.push("Train station pressure increased for 3 days. Everyone discovered waiting as a business model.");
+    }
+  },
+  {
+    chance: 0.012,
+    text: "Municipal street festival: foot traffic blooms, hygiene expectations quietly collapse.",
+    effect(events) {
+      applyDemandEvent({ name: "Street festival", productIds: ["water", "cola", "bar", "seltzer"], multiplier: 1.22, duration: 2, text: "Street festival: impulse food, drinks, and hard seltzer demand rises." }, events);
+      state.world.modifierDays.vandalismWave = Math.max(state.world.modifierDays.vandalismWave || 0, 2);
+      rebuildWorldModifiers();
+      events.push("Festival cleanup pressure increases theft and dirt risk for 2 days.");
+    }
+  },
+  {
+    chance: 0.011,
+    text: "Corporate scandal: a rival executive called vending customers 'button livestock' near a microphone.",
+    effect(events) {
+      const company = pick(activeCorporations());
+      if (!company) return;
+      company.rep = clamp((company.rep || 0) - 6, 0, 100);
+      company.hostility = clamp((company.hostility || 0) + 4, 0, 100);
+      state.brandBuzz = clamp(state.brandBuzz + 2.4, 0, 100);
+      events.push(`${company.label} lost reputation. Your route gained trust by not saying that, yet.`);
+    }
+  },
+  {
+    chance: 0.01,
+    text: "Grid instability: half the district learns which machines have spiritual resilience.",
+    effect(events) {
+      const locationId = pick(Object.keys(locations));
+      state.world.lockdowns[locationId] = Math.max(state.world.lockdowns[locationId] || 0, 1);
+      events.push(`${locationById(locationId).label}: partial infrastructure failure reduces traffic for 1 day.`);
     }
   }
 ];
@@ -1616,6 +1752,19 @@ const legalPressureEvents = [
       state.world.hostility = clamp((state.world.hostility || 0) + 1, 0, 100);
       events.push(`Alcohol compliance filing cost: ${formatMoney(cost)}. The license remains valid, but more supervised.`);
     }
+  },
+  {
+    id: "supplierReluctanceReview",
+    label: "Supplier reluctance review",
+    minHostility: 58,
+    minHeat: 6,
+    baseCost: 4800,
+    text: "A supplier asked for risk premiums after hearing your company name from three different lawyers.",
+    effect(cost, events) {
+      const product = pick(products);
+      state.supplyModifiers[product.id] = { multiplier: 1.16, daysLeft: 2, name: "Supplier risk premium" };
+      events.push(`${productDisplayName(product)} supply cost increased for 2 days. Legal expense: ${formatMoney(cost)}.`);
+    }
   }
 ];
 
@@ -1661,6 +1810,22 @@ const firstWeekGuidance = {
   7: {
     title: "Day 7 external pressure",
     text: "The city and competitors are beginning to notice your rectangles. This is not approval."
+  },
+  10: {
+    title: "Day 10 operator training",
+    text: "Customer mix is not decoration. District habits change what sells, what rots, and what gets reviewed."
+  },
+  14: {
+    title: "Day 14 corporate desk note",
+    text: "Corporate pressure is a cost forecast wearing a tie. De-escalate before it becomes rent, audits, or supplier reluctance."
+  },
+  21: {
+    title: "Day 21 route restructuring",
+    text: "Machines can now be sold if the route needs a cleaner shape. Depreciation is rude, but reversible mistakes are healthy."
+  },
+  30: {
+    title: "Day 30 public narrative",
+    text: "Press requests and corporate diplomacy become part of the route record. Your answers shape WENDING classification."
   }
 };
 
@@ -1977,6 +2142,8 @@ const state = {
     pressCooldown: 0,
     lastDiplomacyDay: 0,
     lastPressDay: 0,
+    lastCorporateAttackDay: 0,
+    lastInfightingDay: 0,
     lastDiplomacyPrompt: "",
     lastPressPrompt: "",
     pressTone: "unfiled",
@@ -2054,6 +2221,7 @@ const state = {
   cityFeed: [],
   pendingOperations: [],
   guidanceDismissed: {},
+  freePlacementMachineId: null,
   log: ["Choose a machine type to start your vending route."]
 };
 
@@ -2127,6 +2295,7 @@ const el = {
   collectCash: document.querySelector("#collectCash"),
   repair: document.querySelector("#repair"),
   clean: document.querySelector("#clean"),
+  sellMachine: document.querySelector("#sellMachine"),
   gameOverOverlay: document.querySelector("#gameOverOverlay"),
   gameOverTitle: document.querySelector("#gameOverTitle"),
   gameOverReason: document.querySelector("#gameOverReason"),
@@ -2715,7 +2884,7 @@ function resetNewGameState(option) {
   state.supplyModifiers = {};
   state.demandModifiers = {};
   state.competition = { companies: competitorTemplates.map((company) => normalizeCorporation(company, company)), locations: {} };
-  state.world = { eventChains: {}, reactionMemory: [], modifiers: {}, modifierDays: {}, lockdowns: {}, warfareCooldowns: {}, hostility: 0, crisisDays: 0, eventCooldowns: {}, corporateEffects: [], targetCorporationId: competitorTemplates[0].id, choiceSignals: {}, diplomacyCooldown: 0, pressCooldown: 0, lastDiplomacyDay: 0, lastPressDay: 0, lastDiplomacyPrompt: "", lastPressPrompt: "", pressTone: "unfiled", milestoneMemory: {}, digestMemory: [], fourthWallMemory: { lastDay: -99, lastCategory: "", signatures: [] } };
+  state.world = { eventChains: {}, reactionMemory: [], modifiers: {}, modifierDays: {}, lockdowns: {}, warfareCooldowns: {}, hostility: 0, crisisDays: 0, eventCooldowns: {}, corporateEffects: [], targetCorporationId: competitorTemplates[0].id, choiceSignals: {}, diplomacyCooldown: 0, pressCooldown: 0, lastDiplomacyDay: 0, lastPressDay: 0, lastCorporateAttackDay: 0, lastInfightingDay: 0, lastDiplomacyPrompt: "", lastPressPrompt: "", pressTone: "unfiled", milestoneMemory: {}, digestMemory: [], fourthWallMemory: { lastDay: -99, lastCategory: "", signatures: [] } };
   state.corporate = {
     employees: { stocker: 0, mechanic: 0, cleaner: 0, accountant: 0, lawyer: 0 },
     supplierMode: "normal",
@@ -2737,6 +2906,7 @@ function resetNewGameState(option) {
   state.cityFeed = [];
   state.pendingOperations = [];
   state.guidanceDismissed = {};
+  state.freePlacementMachineId = null;
   state.operatorProfile = defaultOperatorProfile();
 }
 
@@ -2798,6 +2968,7 @@ function startGame(type) {
   state.machines = [machine];
   state.selectedMachine = machine.id;
   state.started = true;
+  state.freePlacementMachineId = machine.id;
   state.startupFinancingId = Object.entries(startupFinancingOptions).find(([, item]) => item === option)?.[0] || STARTUP_FINANCING_DEFAULT;
   const foundingContract = machineProgression[type]?.contract;
   if (foundingContract) state.contracts[foundingContract] = { acquiredDay: state.day, founding: true };
@@ -2841,6 +3012,11 @@ function render() {
   el.machineSign.textContent = safeMachineName(machine);
   el.machineRename.value = safeMachineName(machine);
   el.machineCash.textContent = formatMoney(machine.cash);
+  if (el.sellMachine) {
+    el.sellMachine.textContent = `Sell ${formatMoney(resaleValue(machine))}`;
+    el.sellMachine.disabled = state.runningDay || state.machines.length <= 1 || Boolean(state.gameOver);
+    el.sellMachine.title = state.machines.length <= 1 ? "Route continuity requires at least one machine." : "Sell selected machine for depreciated resale value.";
+  }
   el.machineLocation.value = machine.location;
   el.conditionBar.style.width = `${machine.condition}%`;
   el.cleanBar.style.width = `${machine.clean}%`;
@@ -2953,6 +3129,8 @@ function renderFinancePanel() {
   const interest = estimateLoanInterest();
   const standing = financialStanding();
   const pressure = debtPressureRatio();
+  const legalReserve = estimateLegalExpenseReserve();
+  const legalEffects = corporatePressureGameplayEffects();
   el.financePanel.innerHTML = `
     <div>
       <p class="eyebrow">Finance desk <button class="help-button small" data-help="finance" aria-label="Finance help">?</button></p>
@@ -2965,6 +3143,11 @@ function renderFinancePanel() {
       <button data-repay="max" ${debt <= 0 || state.cash <= 0 || state.runningDay || state.gameOver ? "disabled" : ""}>Repay max</button>
       <input class="repay-input" type="number" min="0" step="1000" placeholder="Custom" data-repay-custom>
       <button data-repay-submit ${debt <= 0 || state.cash <= 0 || state.runningDay || state.gameOver ? "disabled" : ""}>Repay custom</button>
+    </div>
+    <div class="legal-expense-box">
+      <strong>Legal expenses</strong>
+      <span>Projected reserve: ${formatMoney(legalReserve)}. Fines paid: ${formatMoney(state.corporate?.fines || 0)}.</span>
+      <small>Current pressure adds audit chance +${Math.round(legalEffects.auditChanceBonus * 1000) / 10}% and takeover risk +${legalEffects.takeoverBonus}%. Legal Counsel reduces actual event costs.</small>
     </div>
     <div class="loan-offers">
       ${Object.entries(loanOffers).map(([id, offer]) => {
@@ -3193,7 +3376,7 @@ function renderFirstWeekGuidance() {
   el.firstWeekGuidance.classList.remove("hidden");
   el.firstWeekGuidance.innerHTML = `
     <div>
-      <p class="eyebrow">First week guidance</p>
+      <p class="eyebrow">Operator guidance</p>
       <h2>${note.title}</h2>
       <span>${note.text}</span>
     </div>
@@ -3372,6 +3555,8 @@ function normalizeLoadedState() {
   state.world.pressCooldown = Math.max(0, Math.round(Number(state.world.pressCooldown) || 0));
   state.world.lastDiplomacyDay = Math.max(0, Math.round(Number(state.world.lastDiplomacyDay) || 0));
   state.world.lastPressDay = Math.max(0, Math.round(Number(state.world.lastPressDay) || 0));
+  state.world.lastCorporateAttackDay = Math.max(0, Math.round(Number(state.world.lastCorporateAttackDay) || 0));
+  state.world.lastInfightingDay = Math.max(0, Math.round(Number(state.world.lastInfightingDay) || 0));
   state.world.lastDiplomacyPrompt = sanitizeName(state.world.lastDiplomacyPrompt, "", 48);
   state.world.lastPressPrompt = sanitizeName(state.world.lastPressPrompt, "", 48);
   state.world.pressTone = sanitizeName(state.world.pressTone, "unfiled", 32);
@@ -3519,6 +3704,7 @@ function normalizeLoadedState() {
       state.contracts[legacyContract] = { acquiredDay: state.day, legacy: true };
     }
   });
+  state.freePlacementMachineId = state.freePlacementMachineId && state.machines.some((machine) => machine.id === state.freePlacementMachineId && ensureMachineHistory(machine).daysActive === 0) ? state.freePlacementMachineId : null;
   if (!state.selectedMachine && state.machines[0]) state.selectedMachine = state.machines[0].id;
   if (state.selectedMachine && !state.machines.some((machine) => machine.id === state.selectedMachine)) {
     state.selectedMachine = state.machines[0]?.id || null;
@@ -3632,6 +3818,9 @@ function calculateBehaviorMetrics() {
   const premiumPrices = products.filter((product) => product.price >= product.basePrice * 1.22).length;
   const lowPrices = products.filter((product) => product.price <= product.basePrice * 0.86).length;
   const oldMachines = state.machines.filter((machine) => (machine.history?.daysActive || 0) >= 14).length;
+  const debtRatio = companyValue() > 0 ? loanPrincipal() / companyValue() : 0;
+  const serviceSpend = state.stats?.maintenance || 0;
+  const cleaningSpend = state.stats?.cleaning || 0;
   const scores = {
     caffeine: ((typeSales.coffee || 0) + (productSales.energy || 0)) / totalSales,
     beverageMinimalism: ((productSales.water || 0) + (productSales.cola || 0)) / totalSales,
@@ -3651,22 +3840,22 @@ function calculateBehaviorMetrics() {
     freshFoodBias: scores.freshLiability,
     budgetBehavior: clamp(lowPrices / products.length + scores.snackExpansion * 0.28, 0, 1),
     premiumBehavior: scores.premium,
-    expansionPressure: clamp((state.machines.length - 1) / 8, 0, 1),
-    maintenanceNeglect: scores.neglect,
-    corporateCompliance: scores.compliance,
-    auditRisk: scores.auditHeat,
+    expansionPressure: clamp((state.machines.length - 1) / 8 + debtRatio * 0.18 + (choiceSignals.debtGrowth || 0) * 0.035, 0, 1),
+    maintenanceNeglect: clamp(scores.neglect - Math.min(0.18, serviceSpend / 180000) - Math.min(0.12, cleaningSpend / 120000), 0, 1),
+    corporateCompliance: clamp(scores.compliance + (choiceSignals.legalistic || 0) * 0.045 + (choiceSignals.diplomatic || 0) * 0.035, 0, 1),
+    auditRisk: clamp(scores.auditHeat + debtRatio * 0.08, 0, 1),
     blackMarketAffinity: clamp(blackMarket / 42000 + (state.corporate?.supplierMode === "shady" ? 0.22 : 0) + (choiceSignals.dirtyTactics || 0) * 0.08, 0, 1),
     competitorPressure: clamp(scores.competitorBait + (choiceSignals.antiCorporate || 0) * 0.06, 0, 1),
     locationRisk: clamp(scores.stationChaos + pressure / 30, 0, 1)
   });
   const identityScores = {
-    sellout: clamp(Object.keys(state.contracts || {}).length * 0.11 + employees * 0.07 + (state.corporate?.securityContract !== "none" ? 0.12 : 0) + (state.corporate?.supplierMode === "premium" ? 0.08 : 0) + (choiceSignals.corporateCompliance || 0) * 0.08, 0, 1),
+    sellout: clamp(Object.keys(state.contracts || {}).length * 0.11 + employees * 0.07 + (state.corporate?.securityContract !== "none" ? 0.12 : 0) + (state.corporate?.supplierMode === "premium" ? 0.08 : 0) + (choiceSignals.corporateCompliance || 0) * 0.08 + (choiceSignals.diplomatic || 0) * 0.03, 0, 1),
     underground: clamp(blackMarket / 42000 + (state.corporate?.supplierMode === "shady" ? 0.22 : 0) + heat / 180 + (choiceSignals.antiCorporate || 0) * 0.06, 0, 1),
     luxury: clamp(reputation() / 130 + premiumPrices * 0.045 + (state.corporate?.supplierMode === "premium" ? 0.14 : 0), 0, 1),
     chaos: clamp(scores.stationChaos * 0.55 + scores.neglect * 0.38 + pressure / 30 + (state.stats?.daily || []).slice(-8).reduce((sum, day) => sum + (day.events || 0), 0) / 100, 0, 1),
     monopoly: clamp((state.machines.length - 2) / 8 + pressure / 34 + oldMachines * 0.04, 0, 1),
     ethical: clamp((100 - heat) / 140 + (substituteCount === 0 ? 0.16 : -0.16) + (blackMarket === 0 ? 0.14 : -0.12) + reputation() / 220 + (choiceSignals.ethical || 0) * 0.08, 0, 1),
-    megacorp: clamp((state.machines.length - 4) / 8 + employees * 0.055 + heat / 210 + (choiceSignals.aggressiveExpansion || 0) * 0.05 + (state.stats?.daily || []).slice(-7).reduce((sum, day) => sum + day.revenue, 0) / 190000, 0, 1)
+    megacorp: clamp((state.machines.length - 4) / 8 + employees * 0.055 + heat / 210 + debtRatio * 0.16 + (choiceSignals.aggressiveExpansion || 0) * 0.05 + (choiceSignals.debtGrowth || 0) * 0.035 + (state.stats?.daily || []).slice(-7).reduce((sum, day) => sum + day.revenue, 0) / 190000, 0, 1)
   };
   return {
     scores,
@@ -3680,6 +3869,7 @@ function calculateBehaviorMetrics() {
       oldMachines,
       premiumPrices,
       pressure,
+      debtRatio,
       substituteCount,
       totalSales
     }
@@ -3838,7 +4028,8 @@ function renderLocationOptions() {
     option.value = id;
     const blocked = pressure.blockedDays > 0 ? ` - blocked ${pressure.blockedDays}d` : "";
     const landlord = pressure.landlordDays > 0 ? ` - landlord pressure ${pressure.landlordDays}d` : "";
-    const moveFee = machine && machine.location !== id ? ` - move ${formatMoney(relocationFee(machine, id))}` : "";
+    const freeInitial = machine && state.freePlacementMachineId === machine.id && ensureMachineHistory(machine).daysActive === 0;
+    const moveFee = machine && machine.location !== id ? ` - ${freeInitial ? "initial placement free" : `move ${formatMoney(relocationFee(machine, id))}`}` : "";
     option.textContent = `${location.label} - rent ${formatMoney(location.upkeep)}/day${moveFee}${blocked}${landlord}`;
     el.machineLocation.append(option);
   });
@@ -3882,6 +4073,7 @@ function machineAgeLabel(machine) {
 
 function renderLocationProfile(machine) {
   const location = locationById(machine.location);
+  const district = districtProfiles[machine.location] || districtProfiles.campus;
   const pressure = competitionLocation(machine.location);
   const rival = pressure.companyId ? competitorById(pressure.companyId) : null;
   const mix = locationCustomers[machine.location] || ["casual"];
@@ -3920,8 +4112,9 @@ function renderLocationProfile(machine) {
     : "";
   el.locationProfile.innerHTML = `
     <div>
-      <strong>${location.label}</strong>
+      <strong>${location.label} - ${district.identity}</strong>
       <span>${risk} - demand ${Math.round(location.demand * worldLocationDemandFactor(machine.location) * pressureAdBlitzFactor(machine.location) * 100)}% - security ${Math.round(effectiveSecurity(machine))}%${securityNote} - rent ${formatMoney(location.upkeep)}/day</span>
+      <small>Best fit: ${district.strategy}. Main risk: ${district.risk}.</small>
     </div>
     <p class="machine-flavor" title="${machineFlavor}">${machineFlavor}</p>
     <div class="location-tags">
@@ -4016,10 +4209,12 @@ function renderExpensePreview() {
 }
 
 function projectedNextDayExpenses() {
+  const legalReserve = estimateLegalExpenseReserve();
   const items = [
     { label: "Machine and location upkeep", value: estimatePredictableUpkeep() },
     { label: "Planned auto-restock", value: estimateAutoRestockSpend() },
     { label: "Corporate overhead", value: estimateCorporateOverhead() },
+    { label: "Legal expenses reserve", value: legalReserve },
     { label: "Route complexity overhead", value: estimateExpansionOverhead() },
     { label: "Dead inventory drag", value: estimateDeadInventoryDrag() },
     { label: "Known event reserve", value: estimateKnownEventReserve() },
@@ -4097,8 +4292,15 @@ function estimateKnownEventReserve() {
     const landlord = pressure.landlordDays > 0 ? Math.round(locations[locationId].upkeep * 0.24 + pressure.level * 120) : 0;
     return sum + (pressure.level >= 3 ? pressure.level * 180 : 0) + landlord;
   }, 0);
-  const auditReserve = Math.round((state.corporate?.heat || 0) * 35);
-  return pressureReserve + auditReserve;
+  return pressureReserve;
+}
+
+function estimateLegalExpenseReserve() {
+  const heat = state.corporate?.heat || 0;
+  const tier = hostilityTier();
+  const base = Math.round(heat * 34 + (state.world?.hostility || 0) * tier.legalFactor * 18);
+  const counselFactor = state.corporate?.employees?.lawyer ? 0.68 : 1;
+  return Math.round(base * counselFactor);
 }
 
 function estimateLoanInterest() {
@@ -4198,6 +4400,17 @@ function lateGamePressureScore() {
   return clamp(machines + alcoholExposure + cash + profit / 140000 + dominance * 0.35 + identity + (state.world?.hostility || 0) / 220, 0, 1.6);
 }
 
+function corporatePressureGameplayEffects(value = state.world?.hostility || 0) {
+  const hostility = clamp(Number(value) || 0, 0, 100);
+  return {
+    takeoverBonus: hostility >= 75 ? 12 : hostility >= 50 ? 7 : hostility >= 25 ? 3 : 0,
+    auditChanceBonus: hostility >= 75 ? 0.012 : hostility >= 50 ? 0.007 : hostility >= 25 ? 0.003 : 0,
+    reputationDrag: hostility >= 75 ? 0.24 : hostility >= 50 ? 0.12 : hostility >= 25 ? 0.04 : 0,
+    supplierReluctance: hostility >= 75 ? 0.045 : hostility >= 50 ? 0.025 : hostility >= 25 ? 0.01 : 0,
+    locationPressureChance: hostility >= 75 ? 0.035 : hostility >= 50 ? 0.02 : hostility >= 25 ? 0.01 : 0
+  };
+}
+
 function lateGameStage() {
   const value = companyValue();
   const dominance = Math.max(0, ...Object.keys(locations).map((locationId) => districtDominance(locationId)));
@@ -4290,6 +4503,8 @@ function takeLoan(offerId) {
   setLoanPrincipal(newPrincipal);
   state.finance.interestRate = clamp(blendedRate, 0.035, 0.12);
   state.finance.loansTaken = (state.finance.loansTaken || 0) + 1;
+  addOperatorChoiceSignal("debtGrowth", offer.amount >= 80000 ? 1.5 : 0.8);
+  if (offerId === "corporateGrowth") addOperatorChoiceSignal("corporateCompliance", 0.8);
   addLog(`${offer.label} accepted: ${formatMoney(offer.amount)} cash added, principal now ${formatMoney(newPrincipal)}, blended rate ${Math.round(state.finance.interestRate * 1000) / 10}%.`);
   const fourthWall = maybeFourthWallMoment("finance");
   if (fourthWall) addLog(fourthWall.text);
@@ -4307,6 +4522,7 @@ function repayLoan(amountMode = "5000") {
   state.finance.totalRepaid += amount;
   state.finance.lastPrincipalPayment = amount;
   state.brandBuzz = clamp(state.brandBuzz + 0.4, 0, 100);
+  addOperatorChoiceSignal("cautious", amount >= 12000 ? 0.7 : 0.3);
   addLog(`Repaid ${formatMoney(amount)} principal. Remaining principal: ${formatMoney(loanPrincipal())}. Finance responded with a smaller frown.`);
   const fourthWall = maybeFourthWallMoment("finance");
   if (fourthWall) addLog(fourthWall.text);
@@ -4764,6 +4980,10 @@ function renderCorporate() {
       <h3>Black market inventory <button class="help-button small" data-help="blackMarket" aria-label="Black market help">?</button></h3>
       <p class="corp-note">Last supplier: ${blackMarketSuppliers.find((supplier) => supplier.id === corporate.lastBlackMarketSupplier)?.label || "none"} - scandals filed: ${corporate.blackMarketScandals || 0}</p>
       <button class="wide-action" data-black-market ${state.cash < 6400 || state.runningDay ? "disabled" : ""}>Buy mystery crate ${formatMoney(6400)}</button>
+      <div class="sub-list compact-substitutes">
+        <h4>Questionable substitutes <button class="help-button small" data-help="substitutes" aria-label="Substitutes help">?</button></h4>
+        ${substituteRows}
+      </div>
     </section>
     <section class="corp-section">
       <h3>Corporate warfare <button class="help-button small" data-help="competition" aria-label="Corporate warfare help">?</button></h3>
@@ -4785,10 +5005,6 @@ function renderCorporate() {
     <section class="corp-section">
       <h3>Rival stability</h3>
       <div class="pressure-list">${renderRivalStabilitySummary()}</div>
-    </section>
-    <section class="corp-section">
-      <h3>Questionable substitutes <button class="help-button small" data-help="substitutes" aria-label="Substitutes help">?</button></h3>
-      <div class="sub-list">${substituteRows}</div>
     </section>
   `;
   bindHelpButtons(el.corporate);
@@ -4894,7 +5110,8 @@ function corporatePressureSummary() {
   const hotLocations = Object.keys(locations).filter((locationId) => (competitionLocation(locationId).level || 0) >= 3).length;
   const cooldowns = Object.values(state.world?.warfareCooldowns || {}).filter((days) => days > 0).length;
   const tier = hostilityTier(hostility);
-  return `Corporate pressure: ${tier.label}. Hostility ${hostility}%, ${hotLocations} hot district(s), ${cooldowns} warfare cooldown(s). ${tier.text} Use De-escalation paperwork, premium suppliers, legal counsel, and lower-heat choices to cool it.`;
+  const effects = corporatePressureGameplayEffects(hostility);
+  return `Corporate pressure: ${tier.label}. Hostility ${hostility}%, ${hotLocations} hot district(s), ${cooldowns} warfare cooldown(s). Effects: takeover risk +${effects.takeoverBonus}%, audit chance +${Math.round(effects.auditChanceBonus * 1000) / 10}%, supplier reluctance +${Math.round(effects.supplierReluctance * 1000) / 10}%, reputation drag ${effects.reputationDrag ? `-${effects.reputationDrag}/day` : "none"}. ${tier.text} Use De-escalation paperwork, premium suppliers, legal counsel, and lower-heat choices to cool it.`;
 }
 
 function legalPressureSummary() {
@@ -5363,6 +5580,12 @@ function drawMultiLineChart(id, items) {
   const height = 136;
   drawSeries(ctx, items, "income", "#4f9d78", left, top, width, height, max);
   drawSeries(ctx, items, "expenses", "#d05f45", left, top, width, height, max);
+  ctx.fillStyle = "#4f9d78";
+  ctx.font = "bold 12px system-ui";
+  ctx.textAlign = "left";
+  ctx.fillText("Income", left, top - 10);
+  ctx.fillStyle = "#d05f45";
+  ctx.fillText("Expenses", left + 76, top - 10);
   items.forEach((item, index) => {
     const x = left + (items.length === 1 ? width / 2 : (index / (items.length - 1)) * width);
     ctx.fillStyle = "#65726b";
@@ -5454,7 +5677,7 @@ function renderCityFeed() {
   if (!el.cityFeed) return;
   const items = (state.cityFeed || []).slice(0, 5);
   el.cityFeed.innerHTML = items.length
-    ? items.map((item) => `<article><span>${sanitizeName(item.section, "News", 24)}</span><strong>${sanitizeName(item.text, "Headline unavailable.", 160)}</strong></article>`).join("")
+    ? items.map((item, index) => `<article class="${index === 0 ? "lead-headline" : ""}"><span>${sanitizeName(item.section, "News", 24)}</span><strong>${sanitizeName(item.text, "Headline unavailable.", 160)}</strong></article>`).join("")
     : "<p class=\"empty-note\">No city feed items yet. The municipal content machine is warming up.</p>";
 }
 
@@ -5643,7 +5866,8 @@ function maybeCreateDiplomacyPrompt() {
   if (!isLateGame() || (state.world?.diplomacyCooldown || 0) > 0) return null;
   const daysSince = state.world?.lastDiplomacyDay ? state.day - state.world.lastDiplomacyDay : 999;
   const pressureChance = 0.12 + lateGamePressureScore() * 0.08 + Math.min(0.18, Math.max(0, daysSince - 8) * 0.018);
-  if (daysSince < 5 || !shouldRollWorldEvent("choice:diplomacy", pressureChance, 3)) return null;
+  const forced = daysSince >= 16;
+  if (daysSince < 5 || (!forced && !shouldRollWorldEvent("choice:diplomacy", pressureChance, 3))) return null;
   const corp = selectedCorporation();
   if (!corp) return null;
   const stage = lateGameStage();
@@ -5666,7 +5890,8 @@ function maybeCreatePressPrompt() {
   const daysSince = state.world?.lastPressDay ? state.day - state.world.lastPressDay : 999;
   const scheduledWindow = state.day >= 24 && (state.day % 24 <= 4 || state.day % 30 <= 4);
   const pressureChance = 0.1 + lateGamePressureScore() * 0.06 + Math.min(0.22, Math.max(0, daysSince - 14) * 0.016);
-  if (daysSince < 10 || (!scheduledWindow && !shouldRollWorldEvent("choice:press", pressureChance, 4))) return null;
+  const forced = daysSince >= 34;
+  if (daysSince < 10 || (!forced && !scheduledWindow && !shouldRollWorldEvent("choice:press", pressureChance, 4))) return null;
   const available = pressInterviewPrompts.filter((prompt) => prompt.id !== state.world.lastPressPrompt && (!prompt.requires || prompt.requires()));
   const prompt = pick(available.length ? available : pressInterviewPrompts.filter((item) => !item.requires || item.requires()));
   if (!prompt) return null;
@@ -5692,6 +5917,10 @@ function addCityHeadlinesForDay(result) {
     addCityHeadline(makeCityHeadline("identity"));
   }
   if (result.sold > 0) addCityHeadline(makeCityHeadline("culture", { product: result.sales[0]?.product || pick(products).name }));
+  const districtProfile = districtProfiles[highestDominanceLocation()];
+  if (districtProfile && shouldRollWorldEvent(`district-identity:${highestDominanceLocation()}`, 0.045 + lateGamePressureScore() * 0.025, 8)) {
+    addCityHeadline({ day: state.day, section: "Districts", text: districtProfile.cityLine });
+  }
   if (state.machines.length >= 5 && shouldRollWorldEvent("reaction:rapid-expansion", 0.08, 6)) {
     addCityHeadline({ day: state.day, section: "City", text: `${sanitizeName(state.companyName, DEFAULT_COMPANY_NAME)} route density noticed by landlords who suddenly remembered infrastructure.` });
   }
@@ -5789,6 +6018,12 @@ function behaviorReviewCandidates(result) {
   }
   const goodFit = machines.find((machine) => machineStockTotal(machine) > 5 && averageMachineLocationFit(machine) > 1.12 && result.sold >= 5);
   if (goodFit) candidates.push(makeReview(5, "very positive", `${safeMachineName(goodFit)} stocked ${sampleReviewProduct(goodFit)} like it knew the district personally. I respect the targeting and fear the accuracy.`, goodFit, ["curation", "praise"], 3));
+  const customerAligned = machines.find((machine) => machineStockTotal(machine) > 4 && customerMixDemandFactor(machine) > 1.08 && result.sold >= 4);
+  if (customerAligned) {
+    const mix = locationCustomers[customerAligned.location] || ["casual"];
+    const customer = customerTypes[pick(mix)] || customerTypes.casual;
+    candidates.push(makeReview(4, "positive", `${safeMachineName(customerAligned)} seems calibrated for ${customer.label}s. That is either service design or surveillance with snacks.`, customerAligned, ["customer-mix", "praise"], 3));
+  }
   if (worstCondition && (worstCondition.broken || worstCondition.condition < 28)) candidates.push(makeReview(1, "very negative", `${safeMachineName(worstCondition)} keeps breaking like it has tenure. One star for structural honesty.`, worstCondition, ["broken", "neglect"], 5));
   if (dirtiest && dirtiest.clean < 35) candidates.push(makeReview(2, "negative", `${safeMachineName(dirtiest)} looked like it had survived a committee meeting in a parking garage.`, dirtiest, ["dirty", "neglect"], 4));
   if (overpriced.length >= Math.max(1, Math.ceil(selectedProducts.length * 0.45))) candidates.push(makeReview(2, "negative", `${safeMachineName(selected)} made ${selectedCategory.plural} feel overpriced. Even the buttons seemed to be charging rent.`, selected, ["overpriced", "pricing"], 4));
@@ -5885,7 +6120,7 @@ function creepyReviewCandidates(result) {
 }
 
 function setBusy(isBusy) {
-  [el.nextDay, el.collectCash, el.repair, el.clean, el.buyMachine, el.machineLocation, el.exportSave, el.importSave, el.machineRename].forEach((button) => {
+  [el.nextDay, el.collectCash, el.repair, el.clean, el.sellMachine, el.buyMachine, el.machineLocation, el.exportSave, el.importSave, el.machineRename].forEach((button) => {
     if (!button) return;
     button.disabled = isBusy;
   });
@@ -6394,7 +6629,13 @@ function applyCorporateOverhead(events) {
   const alcoholHeat = (state.machines || []).filter((machine) => machine.type === "alcohol").length * 0.32;
   const heatChange = supplier.audit * 100 + contract.audit * 100 + activeSubstitutes * 0.9 + alcoholHeat - (employees.accountant || 0) * 1.8 - 1.1;
   state.corporate.heat = clamp(state.corporate.heat + heatChange, 0, 100);
-  state.brandBuzz = clamp(state.brandBuzz + supplier.rep - activeSubstitutes * 0.08, 0, 100);
+  const pressureEffects = corporatePressureGameplayEffects();
+  state.brandBuzz = clamp(state.brandBuzz + supplier.rep - activeSubstitutes * 0.08 - pressureEffects.reputationDrag, 0, 100);
+  if (pressureEffects.supplierReluctance > 0 && Math.random() < pressureEffects.supplierReluctance) {
+    const product = pick(products);
+    state.supplyModifiers[product.id] = { multiplier: 1.08 + pressureEffects.supplierReluctance, daysLeft: 1, name: "Supplier reluctance" };
+    events.push(`Supplier reluctance: ${productDisplayName(product)} wholesale costs rose for 1 day under corporate pressure.`);
+  }
   return overhead;
 }
 
@@ -6419,10 +6660,11 @@ function rollLegalPressureEvent(events) {
   const tier = hostilityTier(hostility);
   const lawyer = state.corporate?.employees?.lawyer || 0;
   const pressure = lateGamePressureScore();
+  const pressureEffects = corporatePressureGameplayEffects(hostility);
   for (const item of legalPressureEvents) {
     if (hostility < item.minHostility || heat < item.minHeat) continue;
     if (item.requires && !item.requires()) continue;
-    const chance = 0.018 * tier.legalFactor + pressure * 0.018 + heat / 4200;
+    const chance = 0.018 * tier.legalFactor + pressure * 0.018 + heat / 4200 + pressureEffects.auditChanceBonus;
     if (!shouldRollWorldEvent(`legal:${item.id}`, chance, 6)) continue;
     const lawyerFactor = lawyer ? 0.62 : 1;
     const cost = Math.round((item.baseCost + hostility * 95 + heat * 65 + state.machines.length * 420) * lawyerFactor);
@@ -6466,7 +6708,8 @@ function changeLocation() {
     render();
     return;
   }
-  const movingCost = relocationFee(machine, nextLocation);
+  const isFreeInitialPlacement = state.freePlacementMachineId === machine.id && ensureMachineHistory(machine).daysActive === 0;
+  const movingCost = isFreeInitialPlacement ? 0 : relocationFee(machine, nextLocation);
   if (state.cash < movingCost) {
     addLog(`Moving location costs ${formatMoney(movingCost)}, and the budget is making a tiny sad face.`);
     render();
@@ -6474,12 +6717,54 @@ function changeLocation() {
   }
   state.cash -= movingCost;
   machine.location = nextLocation;
+  if (isFreeInitialPlacement) state.freePlacementMachineId = null;
   state.brandBuzz = clamp(state.brandBuzz + 0.8, 0, 100);
-  const note = `${machine.name} moved to ${locationById(nextLocation).label}. Transport invoice processed: ${formatMoney(movingCost)}. Gravity was billed separately.`;
+  const note = isFreeInitialPlacement
+    ? `${machine.name} placed at ${locationById(nextLocation).label}. Initial placement fee waived before the route became emotionally heavy.`
+    : `${machine.name} moved to ${locationById(nextLocation).label}. Transport invoice processed: ${formatMoney(movingCost)}. Gravity was billed separately.`;
   state.pendingOperations ||= [];
   state.pendingOperations.push(note);
   state.pendingOperations = state.pendingOperations.slice(-8);
   addLog(note);
+  render();
+}
+
+function resaleValue(machine) {
+  if (!machine) return 0;
+  const base = effectiveMachineBuyCost(machine.type) * 0.52;
+  const conditionFactor = clamp((machine.condition || 0) / 100, 0.08, 1);
+  const age = machineAgeLabel(machine).label;
+  const ageFactor = {
+    New: 0.92,
+    Reliable: 0.84,
+    Tired: 0.66,
+    "Legacy Unit": 0.48,
+    "Technically Alive": 0.31
+  }[age] || 0.55;
+  const brokenFactor = machine.broken ? 0.45 : 1;
+  const stockValue = Object.entries(machine.stock || {}).reduce((sum, [productId, amount]) => {
+    const product = productById(productId);
+    return sum + (product ? effectiveCost(product) * Math.max(0, amount || 0) * 0.35 : 0);
+  }, 0);
+  return Math.max(1200, Math.round(base * conditionFactor * ageFactor * brokenFactor + stockValue + Math.max(0, machine.cash || 0) * 0.85));
+}
+
+function sellCurrentMachine() {
+  if (state.gameOver || state.runningDay) return;
+  const machine = currentMachine();
+  if (!machine) return;
+  if (state.machines.length <= 1) {
+    addLog("Resale denied: route continuity requires at least one machine.");
+    render();
+    return;
+  }
+  const value = resaleValue(machine);
+  state.cash += value;
+  addLog(`${machine.name} sold for ${formatMoney(value)}. Depreciation filed a small obituary.`);
+  state.machines = state.machines.filter((item) => item.id !== machine.id);
+  state.selectedMachine = state.machines[0]?.id || null;
+  state.finalMachineCriticalDays = 0;
+  addOperatorChoiceSignal("cautious", 0.4);
   render();
 }
 
@@ -6504,6 +6789,7 @@ function buyMachine() {
   state.machines.push(machine);
   state.finalMachineCriticalDays = 0;
   state.selectedMachine = machine.id;
+  state.freePlacementMachineId = machine.id;
   state.brandBuzz = clamp(state.brandBuzz + 4, 0, 100);
   addLog(`Bought a new machine: ${machine.name}. Stock it before the tiny crowd forms.`);
   render();
@@ -6590,9 +6876,10 @@ function planDay() {
     const quirkDemandBoost = machineQuirkFactor(machine, "demand");
     const districtDemandBoost = worldLocationDemandFactor(machine.location) * (pressureAdBlitzFactor(machine.location));
     const mixFit = averageMachineLocationFit(machine);
+    const customerMixDemand = customerMixDemandFactor(machine);
     const repDemand = 2 + rep / 9;
     const dailyVisitors = canSell
-      ? Math.max(0, Math.round(repDemand * typeInfo.demand * location.demand * districtDemandBoost * health * clean * fill * varietyBoost * priceBoost * displayBoost * impulseBoost * lockSlowdown * competitionBoost * saturationBoost * contractBoost * quirkDemandBoost * mixFit * (0.72 + Math.random() * demandVolatility(machine.location))))
+      ? Math.max(0, Math.round(repDemand * typeInfo.demand * location.demand * districtDemandBoost * health * clean * fill * varietyBoost * priceBoost * displayBoost * impulseBoost * lockSlowdown * competitionBoost * saturationBoost * contractBoost * quirkDemandBoost * mixFit * customerMixDemand * (0.72 + Math.random() * demandVolatility(machine.location))))
       : 0;
 
     const machineUpkeep = machineDailyUpkeep(machine, typeInfo, location);
@@ -6837,7 +7124,8 @@ function rollCityImpactEvent(events) {
 function rollLateGameRetaliation(events) {
   const pressure = lateGamePressureScore();
   const tier = hostilityTier();
-  if (state.day < 10 || pressure < 0.34 || Math.random() > (0.045 + pressure * 0.05) * tier.retaliationFactor) return;
+  const pressureEffects = corporatePressureGameplayEffects();
+  if (state.day < 10 || pressure < 0.34 || Math.random() > ((0.04 + pressure * 0.045) * tier.retaliationFactor + pressureEffects.locationPressureChance)) return;
   const locationId = highestDominanceLocation();
   const company = pick(activeCorporations());
   const locationPressure = competitionLocation(locationId);
@@ -6852,7 +7140,8 @@ function rollLateGameRetaliation(events) {
 function rollCorporationAttack(events) {
   if (!state.started || !isLateGame() || state.machines.length < 2) return;
   const tier = hostilityTier();
-  const chance = (0.025 + lateGamePressureScore() * 0.025 + (state.world?.hostility || 0) / 3600) * tier.retaliationFactor;
+  const daysSince = state.world?.lastCorporateAttackDay ? state.day - state.world.lastCorporateAttackDay : 999;
+  const chance = (0.024 + lateGamePressureScore() * 0.026 + (state.world?.hostility || 0) / 4200 + Math.min(0.055, Math.max(0, daysSince - 10) * 0.007)) * tier.retaliationFactor;
   if (!shouldRollWorldEvent("corporate:attack", chance, 4)) return;
   const corps = activeCorporations();
   if (!corps.length) return;
@@ -6885,6 +7174,7 @@ function rollCorporationAttack(events) {
   if (attack.type === "security") pressure.securityIntimidationDays = Math.max(pressure.securityIntimidationDays || 0, attack.duration);
   events.push(`${effect.text} Effect: ${corporateEffectSummary(effect)}.`);
   addCityHeadline({ day: state.day, section: "Corporations", text: `${company.label} escalated pressure against ${sanitizeName(state.companyName, DEFAULT_COMPANY_NAME)}. The city called it competition because that is cheaper.` });
+  state.world.lastCorporateAttackDay = state.day;
 }
 
 function corporateEffectSummary(effect) {
@@ -6907,7 +7197,9 @@ function activeCorporateEffectLines() {
 
 function rollCorporationVsCorporation(events) {
   if (!state.started || !isLateGame() || activeCorporations().length < 2) return;
-  if (!shouldRollWorldEvent("corporate:infighting", 0.035 + lateGamePressureScore() * 0.015, 7)) return;
+  const daysSince = state.world?.lastInfightingDay ? state.day - state.world.lastInfightingDay : 999;
+  const forced = daysSince >= 22 && isLateGame("deep");
+  if (!forced && !shouldRollWorldEvent("corporate:infighting", 0.06 + lateGamePressureScore() * 0.035 + Math.min(0.08, Math.max(0, daysSince - 8) * 0.008), 5)) return;
   const corps = activeCorporations();
   const attacker = pick(corps);
   const defender = pick(corps.filter((corp) => corp.id !== attacker.id));
@@ -6937,12 +7229,26 @@ function rollCorporationVsCorporation(events) {
       }
       defender.rep = clamp((defender.rep || 0) - 2, 0, 100);
       return `${attacker.label} floated a merger rumor about ${defender.label}. Investors briefly developed pupils.`;
+    },
+    () => {
+      attacker.hostility = clamp((attacker.hostility || 0) - 3, 0, 100);
+      defender.hostility = clamp((defender.hostility || 0) + 5, 0, 100);
+      return `${attacker.label} leaked a compliance memo about ${defender.label}. For one beautiful hour, nobody looked at your machines.`;
+    },
+    () => {
+      const locationId = pick(Object.keys(locations));
+      const pressure = competitionLocation(locationId);
+      pressure.companyId = defender.id;
+      pressure.level = Math.max(0, (pressure.level || 0) - 1);
+      defender.marketShare = clamp((defender.marketShare || 0) - 1.4, 0, 100);
+      return `${attacker.label} and ${defender.label} fought over ${locationById(locationId).label}. District pressure loosened while the suits argued.`;
     }
   ];
   const text = pick(outcomes)();
   events.push(text);
   addCityHeadline({ day: state.day, section: "Corporations", text });
   addOperatorChoiceSignal("competitorChaos", 0.4);
+  state.world.lastInfightingDay = state.day;
 }
 
 function rollCrisisWarningEvent(events) {
@@ -7018,7 +7324,7 @@ function maybeNexFlavor(channel, lines, chance = 0.006, cooldown = 18) {
   const anyKey = "nex:any";
   const channelKey = `nex:${channel}`;
   if ((state.world.eventCooldowns[anyKey] || 0) > 0 || (state.world.eventCooldowns[channelKey] || 0) > 0) return "";
-  if (Math.random() >= chance) return "";
+  if (Math.random() >= Math.min(0.035, chance * 1.45)) return "";
   state.world.eventCooldowns[anyKey] = cooldown;
   state.world.eventCooldowns[channelKey] = cooldown * 2;
   return pick(lines);
@@ -7184,7 +7490,7 @@ function takeoverRiskForLocation(locationId) {
   const neglect = machinesHere.reduce((sum, machine) => {
     return sum + Math.max(0, 55 - machine.condition) * 0.16 + Math.max(0, 55 - machine.clean) * 0.12 + (machine.broken ? 10 : 0);
   }, 0);
-  return clamp(pressure.level * 6 + repGap * 0.55 + neglect + presence, 0, 78);
+  return clamp(pressure.level * 6 + repGap * 0.55 + neglect + presence + corporatePressureGameplayEffects().takeoverBonus, 0, 86);
 }
 
 function applyTakeoverPressure(machine, dailyVisitors, events) {
@@ -7231,6 +7537,21 @@ function averageMachineLocationFit(machine) {
   const weighted = stocked.reduce((sum, id) => sum + locationProductFactor(machine.location, id) * Math.max(1, machine.stock[id] || 0), 0);
   const total = stocked.reduce((sum, id) => sum + Math.max(1, machine.stock[id] || 0), 0);
   return clamp(weighted / total, 0.68, 1.28);
+}
+
+function customerMixDemandFactor(machine) {
+  if (!machine) return 1;
+  const mix = locationCustomers[machine.location] || ["casual"];
+  const compatible = productsForType(machine.type).map((product) => product.id);
+  if (!compatible.length) return 1;
+  const stocked = Object.keys(machine.stock || {}).filter((id) => (machine.stock[id] || 0) > 0);
+  const stockedCompatible = stocked.length ? stocked : compatible;
+  const preference = mix.reduce((sum, customerId) => {
+    const customer = customerTypes[customerId] || customerTypes.casual;
+    const preferred = stockedCompatible.filter((id) => customer.products.includes(id)).length;
+    return sum + (preferred > 0 ? 1.08 + Math.min(0.16, preferred * 0.035) : 0.88);
+  }, 0) / Math.max(1, mix.length);
+  return clamp(preference, 0.82, 1.22);
 }
 
 function demandVolatility(locationId) {
@@ -7726,6 +8047,7 @@ el.helpOverlay.addEventListener("click", (event) => {
 el.collectCash.addEventListener("click", collectCash);
 el.repair.addEventListener("click", repairMachine);
 el.clean.addEventListener("click", cleanMachine);
+el.sellMachine?.addEventListener("click", sellCurrentMachine);
 el.machineLocation.addEventListener("change", changeLocation);
 el.machineRename.addEventListener("change", () => renameCurrentMachine(el.machineRename.value));
 el.exportSave.addEventListener("click", exportCurrentSave);
